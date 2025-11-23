@@ -2,3 +2,6 @@ project_id = "orluznhdcrvnyfrjccbh"
 
 [functions.easyjur-auth]
 verify_jwt = false
+
+[functions.easyjur-sync-publicacoes]
+verify_jwt = false
