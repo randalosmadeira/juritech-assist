@@ -38,10 +38,10 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => navigate("/feriados")}
+              onClick={() => navigate("/calendario")}
             >
               <Calendar className="mr-2 h-5 w-5" />
-              Gerenciar Feriados
+              Calendário
             </Button>
             <Button 
               size="lg" 
