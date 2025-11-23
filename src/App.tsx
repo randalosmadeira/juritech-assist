@@ -12,6 +12,7 @@ import Feriados from "./pages/Feriados";
 import Calendario from "./pages/Calendario";
 import AssistenteIA from "./pages/AssistenteIA";
 import Documentos from "./pages/Documentos";
+import AdminAgendamentos from "./pages/AdminAgendamentos";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
             <Route path="/assistente" element={<ProtectedRoute><AssistenteIA /></ProtectedRoute>} />
             <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
+            <Route path="/admin/agendamentos" element={<ProtectedRoute><AdminAgendamentos /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
