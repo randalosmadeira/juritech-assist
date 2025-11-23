@@ -285,6 +285,168 @@ LIMIT 20;
 
 ---
 
+## 3. importar-feriados
+
+**Endpoint:** `POST https://orluznhdcrvnyfrjccbh.supabase.co/functions/v1/importar-feriados`  
+**Autenticação:** Não requerida (verify_jwt = false)
+
+### Descrição
+Importa automaticamente feriados nacionais brasileiros da BrasilAPI para a tabela de feriados.
+
+### Funcionalidades
+
+#### ✅ Importação Automática de Feriados
+- Busca feriados da API pública BrasilAPI (https://brasilapi.com.br)
+- Suporta qualquer ano (padrão: ano atual)
+- Detecta e evita duplicidades por data
+- Classifica automaticamente como feriados nacionais
+
+#### ✅ Controle de Duplicidades
+- Verifica se o feriado já existe antes de inserir
+- Evita registros duplicados por data e tipo
+- Retorna contador de novos vs duplicados
+
+#### ✅ Logging Detalhado
+- Registra cada feriado importado
+- Lista erros específicos
+- Retorna estatísticas completas
+
+### Request Body
+```json
+{
+  "ano": 2025,
+  "estado": "CE"
+}
+```
+
+**Parâmetros:**
+- `ano` (opcional): Ano para importar feriados. Padrão: ano atual
+- `estado` (opcional): Sigla do estado para associar aos feriados
+
+### Response
+```json
+{
+  "success": true,
+  "message": "Importação de feriados do ano 2025 concluída",
+  "results": {
+    "total": 12,
+    "novos": 12,
+    "duplicados": 0,
+    "erros": 0,
+    "feriados_importados": [
+      "Confraternização Universal (2025-01-01)",
+      "Carnaval (2025-03-04)",
+      "Sexta-feira Santa (2025-04-18)",
+      "...mais feriados..."
+    ]
+  }
+}
+```
+
+### Secrets Utilizados
+- `SUPABASE_URL` - URL do projeto Supabase
+- `SUPABASE_SERVICE_ROLE_KEY` - Chave com privilégios elevados
+
+### Tabelas Modificadas
+- `feriados` - Insere novos feriados nacionais
+
+### Exemplo de Uso
+
+#### Via Frontend (React)
+```typescript
+import { supabase } from '@/integrations/supabase/client';
+
+async function importarFeriados(ano: number = new Date().getFullYear()) {
+  const { data, error } = await supabase.functions.invoke(
+    'importar-feriados',
+    {
+      body: { ano }
+    }
+  );
+  
+  if (error) {
+    console.error('Erro na importação:', error);
+    return;
+  }
+  
+  console.log('Resultados:', data.results);
+  // {
+  //   total: 12,
+  //   novos: 12,
+  //   duplicados: 0,
+  //   erros: 0,
+  //   feriados_importados: [...]
+  // }
+}
+```
+
+#### Via cURL
+```bash
+curl -X POST \
+  https://orluznhdcrvnyfrjccbh.supabase.co/functions/v1/importar-feriados \
+  -H "Content-Type: application/json" \
+  -H "apikey: YOUR_ANON_KEY" \
+  -d '{"ano": 2025}'
+```
+
+### Agendamento Automático (Recomendado)
+
+Para importar feriados automaticamente todo ano:
+
+```sql
+-- Executar importação todo dia 1º de janeiro às 6h
+SELECT cron.schedule(
+  'importar-feriados-anual',
+  '0 6 1 1 *',
+  $$
+  SELECT net.http_post(
+    url:='https://orluznhdcrvnyfrjccbh.supabase.co/functions/v1/importar-feriados',
+    headers:='{"Content-Type": "application/json", "apikey": "YOUR_ANON_KEY"}'::jsonb,
+    body:=concat('{"ano": ', EXTRACT(YEAR FROM NOW()), '}')::jsonb
+  ) as request_id;
+  $$
+);
+```
+
+### Fonte de Dados
+
+**BrasilAPI** - API pública e gratuita de feriados nacionais brasileiros
+- URL: https://brasilapi.com.br/api/feriados/v1/{ano}
+- Não requer autenticação
+- Retorna feriados nacionais oficiais
+- Dados atualizados e confiáveis
+
+### Limitações
+
+1. **Apenas Feriados Nacionais**: A BrasilAPI fornece apenas feriados nacionais. Feriados estaduais e municipais devem ser inseridos manualmente ou de outras fontes.
+
+2. **Feriados Móveis**: A API já calcula automaticamente feriados móveis (Carnaval, Páscoa, Corpus Christi).
+
+3. **Anos Futuros**: A API suporta anos futuros com feriados já calculados.
+
+### Tratamento de Erros
+
+#### Erro: API Indisponível
+```json
+{
+  "success": false,
+  "error": "Erro ao buscar feriados da API: 503 Service Unavailable",
+  "details": "Verifique se a API BrasilAPI está disponível e se o ano é válido"
+}
+```
+**Solução:** Tentar novamente mais tarde ou verificar status da BrasilAPI
+
+#### Erro: Ano Inválido
+```json
+{
+  "success": false,
+  "error": "Erro ao buscar feriados da API: 404 Not Found"
+}
+```
+**Solução:** Verificar se o ano é válido e suportado pela API
+
+---
+
 ## Melhorias Futuras
 
 ### 1. Cálculo de Prazos com Feriados
