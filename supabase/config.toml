@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.assistente-juridico]
 verify_jwt = false
+
+[functions.upload-documento]
+verify_jwt = false
+
+[functions.buscar-documentos]
+verify_jwt = false

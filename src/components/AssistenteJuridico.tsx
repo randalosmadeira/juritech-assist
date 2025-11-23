@@ -34,18 +34,47 @@ export const AssistenteJuridico = () => {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('assistente-juridico', {
-        body: { messages: [...messages, userMessage] }
-      });
+      // Buscar documentos disponíveis para contexto
+      const { data: documentos } = await supabase
+        .from('documentos_juridicos')
+        .select('vector_store_id')
+        .eq('status', 'pronto')
+        .not('vector_store_id', 'is', null);
 
-      if (error) throw error;
+      const vectorStoreIds = documentos?.map(d => d.vector_store_id).filter(Boolean) || [];
 
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.choices[0].message.content
-      };
+      // Se há documentos, usar busca com file_search
+      if (vectorStoreIds.length > 0) {
+        const { data, error } = await supabase.functions.invoke('buscar-documentos', {
+          body: { 
+            query: input,
+            vector_store_ids: vectorStoreIds,
+          }
+        });
 
-      setMessages(prev => [...prev, assistantMessage]);
+        if (error) throw error;
+
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.answer
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        // Senão, usar o assistente normal
+        const { data, error } = await supabase.functions.invoke('assistente-juridico', {
+          body: { messages: [...messages, userMessage] }
+        });
+
+        if (error) throw error;
+
+        const assistantMessage: Message = {
+          role: 'assistant',
+          content: data.choices[0].message.content
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+      }
     } catch (error) {
       console.error('Erro ao chamar assistente:', error);
       toast({
