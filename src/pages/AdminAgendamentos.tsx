@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Play, Pause, Trash2, Calendar, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Clock, Play, Pause, Trash2, Calendar, CheckCircle, XCircle, AlertCircle, TrendingUp, Activity, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface CronJob {
   id: string;
@@ -30,11 +31,36 @@ interface ExecutionLog {
   error_message?: string;
 }
 
+interface PublicacoesPorDia {
+  data: string;
+  total: number;
+}
+
+interface TaxaSucesso {
+  status: string;
+  total: number;
+}
+
+interface Estatisticas {
+  totalPublicacoes: number;
+  publicacoesComPrazo: number;
+  totalPrazosAbertos: number;
+  taxaSucesso: number;
+}
+
 const AdminAgendamentos = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [logs, setLogs] = useState<ExecutionLog[]>([]);
+  const [publicacoesPorDia, setPublicacoesPorDia] = useState<PublicacoesPorDia[]>([]);
+  const [taxaSucesso, setTaxaSucesso] = useState<TaxaSucesso[]>([]);
+  const [estatisticas, setEstatisticas] = useState<Estatisticas>({
+    totalPublicacoes: 0,
+    publicacoesComPrazo: 0,
+    totalPrazosAbertos: 0,
+    taxaSucesso: 0,
+  });
   
   // Agendamentos configurados (hardcoded pois pg_cron não tem API direta)
   const cronJobs: CronJob[] = [
@@ -50,6 +76,7 @@ const AdminAgendamentos = () => {
 
   useEffect(() => {
     loadLogs();
+    loadEstatisticas();
   }, []);
 
   const loadLogs = async () => {
@@ -64,6 +91,82 @@ const AdminAgendamentos = () => {
       setLogs(data || []);
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
+    }
+  };
+
+  const loadEstatisticas = async () => {
+    try {
+      // Publicações por dia (últimos 7 dias)
+      const { data: pubData, error: pubError } = await supabase
+        .from('publicacoes')
+        .select('data_publicacao')
+        .gte('data_publicacao', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .order('data_publicacao', { ascending: true });
+
+      if (pubError) throw pubError;
+
+      // Agrupar por dia
+      const publicacoesPorDiaMap = (pubData || []).reduce((acc: Record<string, number>, pub) => {
+        const data = pub.data_publicacao;
+        acc[data] = (acc[data] || 0) + 1;
+        return acc;
+      }, {});
+
+      const publicacoesPorDiaArray = Object.entries(publicacoesPorDiaMap).map(([data, total]) => ({
+        data: new Date(data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        total: total as number,
+      }));
+
+      setPublicacoesPorDia(publicacoesPorDiaArray);
+
+      // Taxa de sucesso dos logs
+      const { data: logsData, error: logsError } = await supabase
+        .from('easyjur_auth_logs')
+        .select('status')
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
+
+      if (logsError) throw logsError;
+
+      const taxaSucessoMap = (logsData || []).reduce((acc: Record<string, number>, log) => {
+        acc[log.status] = (acc[log.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      const taxaSucessoArray = Object.entries(taxaSucessoMap).map(([status, total]) => ({
+        status: status === 'success' ? 'Sucesso' : status === 'error' ? 'Erro' : 'Outros',
+        total: total as number,
+      }));
+
+      setTaxaSucesso(taxaSucessoArray);
+
+      // Estatísticas gerais
+      const { count: totalPubs } = await supabase
+        .from('publicacoes')
+        .select('*', { count: 'exact', head: true });
+
+      const { count: pubsComPrazo } = await supabase
+        .from('publicacoes')
+        .select('*', { count: 'exact', head: true })
+        .eq('tem_prazo', true);
+
+      const { count: prazosAbertos } = await supabase
+        .from('prazos_processuais')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'aberto');
+
+      const totalSuccess = taxaSucessoMap['success'] || 0;
+      const totalTotal = Object.values(taxaSucessoMap).reduce((a: number, b: number) => a + b, 0);
+      const taxaSucessoPercentual = totalTotal > 0 ? (totalSuccess / totalTotal) * 100 : 0;
+
+      setEstatisticas({
+        totalPublicacoes: totalPubs || 0,
+        publicacoesComPrazo: pubsComPrazo || 0,
+        totalPrazosAbertos: prazosAbertos || 0,
+        taxaSucesso: Math.round(taxaSucessoPercentual),
+      });
+
+    } catch (error) {
+      console.error('Erro ao carregar estatísticas:', error);
     }
   };
 
@@ -83,8 +186,11 @@ const AdminAgendamentos = () => {
         description: "A sincronização manual foi executada com sucesso.",
       });
       
-      // Recarregar logs após sincronização
-      setTimeout(() => loadLogs(), 2000);
+      // Recarregar logs e estatísticas após sincronização
+      setTimeout(() => {
+        loadLogs();
+        loadEstatisticas();
+      }, 2000);
     } catch (error) {
       console.error('Erro ao executar sincronização:', error);
       toast({
@@ -142,6 +248,142 @@ const AdminAgendamentos = () => {
           </Button>
           <h1 className="text-3xl font-serif font-bold mb-2">Administração de Agendamentos</h1>
           <p className="text-muted-foreground">Gerencie sincronizações automáticas e visualize logs de execução</p>
+        </div>
+
+        {/* Cards de Estatísticas */}
+        <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Publicações</CardTitle>
+              <FileText className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{estatisticas.totalPublicacoes}</div>
+              <p className="text-xs text-muted-foreground">
+                {estatisticas.publicacoesComPrazo} com prazo
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Prazos Abertos</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{estatisticas.totalPrazosAbertos}</div>
+              <p className="text-xs text-muted-foreground">
+                Requerem atenção
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Taxa de Sucesso</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{estatisticas.taxaSucesso}%</div>
+              <p className="text-xs text-muted-foreground">
+                Últimos 30 dias
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Sincronizações</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{logs.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Últimas execuções
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Gráficos */}
+        <div className="grid gap-6 md:grid-cols-2 mb-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Publicações por Dia</CardTitle>
+              <CardDescription>Últimos 7 dias</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={publicacoesPorDia}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis 
+                    dataKey="data" 
+                    className="text-xs"
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis 
+                    className="text-xs"
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Bar 
+                    dataKey="total" 
+                    fill="hsl(var(--primary))" 
+                    radius={[8, 8, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Taxa de Sucesso</CardTitle>
+              <CardDescription>Distribuição por status (últimos 30 dias)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={taxaSucesso}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="hsl(var(--primary))"
+                    dataKey="total"
+                  >
+                    {taxaSucesso.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={
+                          entry.status === 'Sucesso' 
+                            ? 'hsl(var(--primary))' 
+                            : entry.status === 'Erro'
+                            ? 'hsl(var(--destructive))'
+                            : 'hsl(var(--muted))'
+                        } 
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 mb-6">
