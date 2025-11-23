@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.easyjur-sync-publicacoes]
 verify_jwt = false
+
+[functions.importar-feriados]
+verify_jwt = false
