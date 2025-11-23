@@ -22,11 +22,11 @@ serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!OPENAI_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    if (!LOVABLE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Variáveis de ambiente não configuradas');
     }
 
@@ -103,27 +103,33 @@ serve(async (req) => {
         uploadFormData.append('file', new Blob([fileBuffer], { type: file.type }), file.name);
         uploadFormData.append('purpose', 'assistants');
 
-        const uploadResponse = await fetch('https://api.openai.com/v1/files', {
+        const uploadResponse = await fetch('https://ai.gateway.lovable.dev/v1/files', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           },
           body: uploadFormData,
         });
 
         if (!uploadResponse.ok) {
+          if (uploadResponse.status === 429) {
+            throw new Error('Limite de requisições excedido. Tente novamente em alguns instantes.');
+          }
+          if (uploadResponse.status === 402) {
+            throw new Error('Créditos do Lovable AI esgotados. Entre em contato com o administrador.');
+          }
           const error = await uploadResponse.text();
-          throw new Error(`Erro no upload OpenAI: ${error}`);
+          throw new Error(`Erro no upload Lovable AI: ${error}`);
         }
 
         const fileData = await uploadResponse.json();
         console.log('Arquivo enviado para OpenAI:', fileData.id);
 
         // 2. Criar vector store
-        const vectorStoreResponse = await fetch('https://api.openai.com/v1/vector_stores', {
+        const vectorStoreResponse = await fetch('https://ai.gateway.lovable.dev/v1/vector_stores', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
             'OpenAI-Beta': 'assistants=v2',
           },
@@ -134,6 +140,12 @@ serve(async (req) => {
         });
 
         if (!vectorStoreResponse.ok) {
+          if (vectorStoreResponse.status === 429) {
+            throw new Error('Limite de requisições excedido. Tente novamente em alguns instantes.');
+          }
+          if (vectorStoreResponse.status === 402) {
+            throw new Error('Créditos do Lovable AI esgotados. Entre em contato com o administrador.');
+          }
           const error = await vectorStoreResponse.text();
           throw new Error(`Erro ao criar vector store: ${error}`);
         }
