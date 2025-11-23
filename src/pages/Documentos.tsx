@@ -9,6 +9,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { PDFViewer } from "@/components/PDFViewer";
 import { 
   Upload, 
   FileText, 
@@ -18,13 +19,15 @@ import {
   CheckCircle2, 
   AlertCircle,
   Clock,
-  Trash2
+  Trash2,
+  Eye
 } from "lucide-react";
 
 interface Documento {
   id: string;
   nome_arquivo: string;
   tamanho_bytes: number;
+  storage_path: string;
   status: string;
   categoria: string | null;
   tags: string[] | null;
@@ -44,6 +47,9 @@ const Documentos = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [categoria, setCategoria] = useState("");
   const [tags, setTags] = useState("");
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerFileName, setViewerFileName] = useState("");
 
   useEffect(() => {
     loadDocumentos();
@@ -170,6 +176,27 @@ const Documentos = () => {
       });
     } finally {
       setSearching(false);
+    }
+  };
+
+  const handleView = async (doc: Documento) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('documentos-juridicos')
+        .createSignedUrl(doc.storage_path, 3600); // 1 hora
+
+      if (error) throw error;
+
+      setViewerUrl(data.signedUrl);
+      setViewerFileName(doc.nome_arquivo);
+      setViewerOpen(true);
+    } catch (error) {
+      console.error('Erro ao abrir documento:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível abrir o documento",
+        variant: "destructive",
+      });
     }
   };
 
@@ -414,14 +441,24 @@ const Documentos = () => {
                             </div>
                           )}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(doc.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(doc)}
+                            className="text-primary hover:text-primary"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(doc.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -430,6 +467,14 @@ const Documentos = () => {
             </ScrollArea>
           </CardContent>
         </Card>
+
+        {/* Visualizador de PDF */}
+        <PDFViewer
+          url={viewerUrl}
+          fileName={viewerFileName}
+          open={viewerOpen}
+          onOpenChange={setViewerOpen}
+        />
       </div>
     </div>
   );
