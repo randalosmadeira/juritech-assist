@@ -48,6 +48,35 @@ const tools = [
   },
   {
     type: "function",
+    name: "sincronizar_easyjur",
+    description: "Sincroniza publicações do EasyJur em tempo real. Busca novas publicações diretamente do sistema EasyJur.",
+    parameters: {
+      type: "object",
+      properties: {
+        data_inicial: {
+          type: "string",
+          description: "Data inicial para busca no formato YYYY-MM-DD (opcional, padrão: hoje)"
+        }
+      },
+      required: [],
+      additionalProperties: false
+    },
+    strict: true
+  },
+  {
+    type: "function",
+    name: "verificar_conexao_easyjur",
+    description: "Verifica o status da conexão com o EasyJur e retorna informações sobre a última sincronização.",
+    parameters: {
+      type: "object",
+      properties: {},
+      required: [],
+      additionalProperties: false
+    },
+    strict: true
+  },
+  {
+    type: "function",
     name: "calcular_prazo",
     description: "Calcula a data de vencimento de um prazo processual considerando dias úteis e feriados.",
     parameters: {
@@ -94,6 +123,82 @@ async function executarTool(toolName: string, args: any, supabase: any) {
   console.log(`Executando tool: ${toolName}`, args);
 
   switch (toolName) {
+    case "sincronizar_easyjur": {
+      const { data_inicial } = args;
+      
+      console.log('Sincronizando publicações do EasyJur...');
+      
+      // Chamar edge function de sincronização
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      
+      const syncResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/easyjur-sync-publicacoes`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ data_inicial: data_inicial || new Date().toISOString().split('T')[0] })
+        }
+      );
+
+      if (!syncResponse.ok) {
+        const errorText = await syncResponse.text();
+        console.error('Erro ao sincronizar EasyJur:', errorText);
+        return {
+          sucesso: false,
+          erro: 'Falha ao sincronizar com EasyJur',
+          detalhes: errorText
+        };
+      }
+
+      const syncResult = await syncResponse.json();
+      
+      return {
+        sucesso: true,
+        mensagem: 'Sincronização concluída',
+        publicacoes_novas: syncResult.novas_publicacoes || 0,
+        prazos_criados: syncResult.prazos_criados || 0,
+        duplicadas: syncResult.duplicadas || 0
+      };
+    }
+
+    case "verificar_conexao_easyjur": {
+      // Buscar última sessão
+      const { data: session, error: sessionError } = await supabase
+        .from('easyjur_sessions')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (sessionError) throw sessionError;
+
+      // Buscar últimos logs
+      const { data: logs, error: logsError } = await supabase
+        .from('easyjur_auth_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (logsError) throw logsError;
+
+      return {
+        sucesso: true,
+        conexao_ativa: session?.is_active || false,
+        ultimo_login: session?.last_login_at,
+        expira_em: session?.expires_at,
+        ultima_sincronizacao: logs?.[0]?.created_at,
+        logs_recentes: logs?.map((l: any) => ({
+          acao: l.action,
+          status: l.status,
+          data: l.created_at
+        }))
+      };
+    }
+
     case "buscar_prazos": {
       const { numero_processo } = args;
       const { data, error } = await supabase
@@ -239,8 +344,12 @@ serve(async (req) => {
             content: `Você é um assistente jurídico especializado em direito processual brasileiro. Você tem acesso a ferramentas para:
 - Buscar prazos processuais
 - Buscar publicações
+- Sincronizar publicações do EasyJur em tempo real
+- Verificar status da conexão com EasyJur
 - Calcular datas de vencimento considerando feriados e dias úteis
 - Listar processos ativos
+
+IMPORTANTE: Quando o usuário pedir para buscar atualizações ou sincronizar com EasyJur, use a ferramenta sincronizar_easyjur primeiro, e depois busque as publicações.
 
 Use essas ferramentas sempre que necessário para fornecer informações precisas e atualizadas. Seja objetivo e cite os dados obtidos das ferramentas.`
           },
@@ -296,8 +405,12 @@ Use essas ferramentas sempre que necessário para fornecer informações precisa
               content: `Você é um assistente jurídico especializado em direito processual brasileiro. Você tem acesso a ferramentas para:
 - Buscar prazos processuais
 - Buscar publicações
+- Sincronizar publicações do EasyJur em tempo real
+- Verificar status da conexão com EasyJur
 - Calcular datas de vencimento considerando feriados e dias úteis
 - Listar processos ativos
+
+IMPORTANTE: Quando o usuário pedir para buscar atualizações ou sincronizar com EasyJur, use a ferramenta sincronizar_easyjur primeiro, e depois busque as publicações.
 
 Use essas ferramentas sempre que necessário para fornecer informações precisas e atualizadas. Seja objetivo e cite os dados obtidos das ferramentas.`
             },
