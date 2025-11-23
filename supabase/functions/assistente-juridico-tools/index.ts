@@ -7,117 +7,102 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const tools = [
-  {
-    type: "function",
-    name: "buscar_prazos",
-    description: "Busca prazos processuais por número de processo. Retorna todos os prazos abertos e seus detalhes.",
-    parameters: {
-      type: "object",
-      properties: {
-        numero_processo: {
-          type: "string",
-          description: "Número do processo no formato CNJ (ex: 0001234-56.2024.8.16.0001)"
-        }
-      },
-      required: ["numero_processo"],
-      additionalProperties: false
-    },
-    strict: true
-  },
-  {
-    type: "function",
-    name: "buscar_publicacoes",
-    description: "Busca publicações de um processo específico ou publicações recentes.",
-    parameters: {
-      type: "object",
-      properties: {
-        numero_processo: {
-          type: "string",
-          description: "Número do processo (opcional). Se não informado, retorna publicações recentes."
+// Formato Gemini para function declarations
+const toolsConfig = [{
+  function_declarations: [
+    {
+      name: "buscar_prazos",
+      description: "Busca prazos processuais por número de processo. Retorna todos os prazos abertos e seus detalhes.",
+      parameters: {
+        type: "object",
+        properties: {
+          numero_processo: {
+            type: "string",
+            description: "Número do processo no formato CNJ (ex: 0001234-56.2024.8.16.0001)"
+          }
         },
-        limite: {
-          type: "number",
-          description: "Número máximo de publicações a retornar (padrão: 5)"
-        }
-      },
-      required: [],
-      additionalProperties: false
+        required: ["numero_processo"]
+      }
     },
-    strict: true
-  },
-  {
-    type: "function",
-    name: "sincronizar_easyjur",
-    description: "Sincroniza publicações do EasyJur em tempo real. Busca novas publicações diretamente do sistema EasyJur.",
-    parameters: {
-      type: "object",
-      properties: {
-        data_inicial: {
-          type: "string",
-          description: "Data inicial para busca no formato YYYY-MM-DD (opcional, padrão: hoje)"
-        }
-      },
-      required: [],
-      additionalProperties: false
-    },
-    strict: true
-  },
-  {
-    type: "function",
-    name: "verificar_conexao_easyjur",
-    description: "Verifica o status da conexão com o EasyJur e retorna informações sobre a última sincronização.",
-    parameters: {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: false
-    },
-    strict: true
-  },
-  {
-    type: "function",
-    name: "calcular_prazo",
-    description: "Calcula a data de vencimento de um prazo processual considerando dias úteis e feriados.",
-    parameters: {
-      type: "object",
-      properties: {
-        data_inicio: {
-          type: "string",
-          description: "Data de início no formato YYYY-MM-DD"
+    {
+      name: "buscar_publicacoes",
+      description: "Busca publicações de um processo específico ou publicações recentes.",
+      parameters: {
+        type: "object",
+        properties: {
+          numero_processo: {
+            type: "string",
+            description: "Número do processo (opcional). Se não informado, retorna publicações recentes."
+          },
+          limite: {
+            type: "number",
+            description: "Número máximo de publicações a retornar (padrão: 5)"
+          }
         },
-        dias_prazo: {
-          type: "number",
-          description: "Número de dias úteis do prazo"
+        required: []
+      }
+    },
+    {
+      name: "sincronizar_easyjur",
+      description: "Sincroniza publicações do EasyJur em tempo real. Busca novas publicações diretamente do sistema EasyJur.",
+      parameters: {
+        type: "object",
+        properties: {
+          data_inicial: {
+            type: "string",
+            description: "Data inicial para busca no formato YYYY-MM-DD (opcional, padrão: hoje)"
+          }
         },
-        estado: {
-          type: "string",
-          description: "Estado (UF) para considerar feriados locais (ex: MA)"
-        }
-      },
-      required: ["data_inicio", "dias_prazo"],
-      additionalProperties: false
+        required: []
+      }
     },
-    strict: true
-  },
-  {
-    type: "function",
-    name: "listar_processos",
-    description: "Lista processos ativos no sistema.",
-    parameters: {
-      type: "object",
-      properties: {
-        limite: {
-          type: "number",
-          description: "Número máximo de processos a retornar (padrão: 10)"
-        }
-      },
-      required: [],
-      additionalProperties: false
+    {
+      name: "verificar_conexao_easyjur",
+      description: "Verifica o status da conexão com o EasyJur e retorna informações sobre a última sincronização.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: []
+      }
     },
-    strict: true
-  }
-];
+    {
+      name: "calcular_prazo",
+      description: "Calcula a data de vencimento de um prazo processual considerando dias úteis e feriados.",
+      parameters: {
+        type: "object",
+        properties: {
+          data_inicio: {
+            type: "string",
+            description: "Data de início no formato YYYY-MM-DD"
+          },
+          dias_prazo: {
+            type: "number",
+            description: "Número de dias úteis do prazo"
+          },
+          estado: {
+            type: "string",
+            description: "Estado (UF) para considerar feriados locais (ex: MA)"
+          }
+        },
+        required: ["data_inicio", "dias_prazo"]
+      }
+    },
+    {
+      name: "listar_processos",
+      description: "Lista processos ativos no sistema.",
+      parameters: {
+        type: "object",
+        properties: {
+          limite: {
+            type: "number",
+            description: "Número máximo de processos a retornar (padrão: 10)"
+          }
+        },
+        required: []
+      }
+    }
+  ]
+}];
 
 async function executarTool(toolName: string, args: any, supabase: any) {
   console.log(`Executando tool: ${toolName}`, args);
@@ -355,8 +340,7 @@ Use essas ferramentas sempre que necessário para fornecer informações precisa
           },
           ...messages
         ],
-        tools: tools,
-        tool_choice: "auto",
+        tools: toolsConfig,
         max_completion_tokens: 2000,
       }),
     });
