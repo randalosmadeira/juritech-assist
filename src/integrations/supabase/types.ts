@@ -119,6 +119,54 @@ export type Database = {
         }
         Relationships: []
       }
+      documentos_juridicos: {
+        Row: {
+          categoria: string | null
+          created_at: string
+          file_id: string | null
+          id: string
+          metadados: Json | null
+          mime_type: string
+          nome_arquivo: string
+          status: string
+          storage_path: string
+          tags: string[] | null
+          tamanho_bytes: number
+          updated_at: string
+          vector_store_id: string | null
+        }
+        Insert: {
+          categoria?: string | null
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          metadados?: Json | null
+          mime_type: string
+          nome_arquivo: string
+          status?: string
+          storage_path: string
+          tags?: string[] | null
+          tamanho_bytes: number
+          updated_at?: string
+          vector_store_id?: string | null
+        }
+        Update: {
+          categoria?: string | null
+          created_at?: string
+          file_id?: string | null
+          id?: string
+          metadados?: Json | null
+          mime_type?: string
+          nome_arquivo?: string
+          status?: string
+          storage_path?: string
+          tags?: string[] | null
+          tamanho_bytes?: number
+          updated_at?: string
+          vector_store_id?: string | null
+        }
+        Relationships: []
+      }
       easyjur_auth_logs: {
         Row: {
           action: string
