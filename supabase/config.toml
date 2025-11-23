@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.importar-feriados]
 verify_jwt = false
+
+[functions.assistente-juridico]
+verify_jwt = false

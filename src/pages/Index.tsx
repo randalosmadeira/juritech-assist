@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Scale, Workflow, Shield, Zap, ArrowRight, Calendar } from "lucide-react";
+import { Scale, Workflow, Shield, Zap, ArrowRight, Calendar, Bot } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -38,17 +38,18 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => navigate("/calendario")}
+              onClick={() => navigate("/assistente")}
             >
-              <Calendar className="mr-2 h-5 w-5" />
-              Calendário
+              <Bot className="mr-2 h-5 w-5" />
+              Assistente IA
             </Button>
             <Button 
               size="lg" 
               variant="outline"
-              onClick={() => navigate("/architecture")}
+              onClick={() => navigate("/calendario")}
             >
-              Ver Arquitetura
+              <Calendar className="mr-2 h-5 w-5" />
+              Calendário
             </Button>
           </div>
         </div>
