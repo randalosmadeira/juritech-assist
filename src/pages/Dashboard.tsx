@@ -1,7 +1,8 @@
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Clock, AlertTriangle, TrendingUp, Calendar, Bell, CheckCircle2, XCircle } from "lucide-react";
+import { FileText, Clock, AlertTriangle, TrendingUp, Calendar, Bell, CheckCircle2 } from "lucide-react";
+import { EasyJurConnectionStatus } from "@/components/EasyJurConnectionStatus";
 
 const Dashboard = () => {
   // Mock data - será substituído por dados reais do backend
@@ -166,39 +167,25 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* Status do Sistema */}
-          <Card className="p-6 bg-card border-border lg:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
+          {/* Conexão EasyJur */}
+          <EasyJurConnectionStatus />
+
+          {/* Outras Integrações */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Outras Integrações</CardTitle>
+              <CardDescription>Status das integrações externas</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border">
+                <span className="text-sm font-medium">ConversApp</span>
+                <Badge variant="secondary">Aguardando Config.</Badge>
               </div>
-              <h2 className="text-xl font-serif font-semibold text-foreground">
-                Status do Sistema
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-lg bg-background/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">EasyJur</p>
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                </div>
-                <p className="text-xs text-muted-foreground">Última sincronização: 08:30</p>
+              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border">
+                <span className="text-sm font-medium">E-mail Corporativo</span>
+                <Badge variant="secondary">Aguardando Config.</Badge>
               </div>
-              <div className="p-4 rounded-lg bg-background/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">ConversApp</p>
-                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                </div>
-                <p className="text-xs text-muted-foreground">12 mensagens enviadas hoje</p>
-              </div>
-              <div className="p-4 rounded-lg bg-background/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-muted-foreground">E-mail Corporativo</p>
-                  <XCircle className="h-5 w-5 text-destructive" />
-                </div>
-                <p className="text-xs text-muted-foreground">Aguardando configuração</p>
-              </div>
-            </div>
+            </CardContent>
           </Card>
         </div>
       </main>
