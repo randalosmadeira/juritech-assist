@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Scale, Workflow, Shield, Zap, ArrowRight } from "lucide-react";
+import { Scale, Workflow, Shield, Zap, ArrowRight, Calendar } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -34,6 +34,14 @@ const Index = () => {
             >
               Acessar Dashboard
               <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate("/feriados")}
+            >
+              <Calendar className="mr-2 h-5 w-5" />
+              Gerenciar Feriados
             </Button>
             <Button 
               size="lg" 
