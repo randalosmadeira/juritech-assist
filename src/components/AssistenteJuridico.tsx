@@ -34,47 +34,19 @@ export const AssistenteJuridico = () => {
     setIsLoading(true);
 
     try {
-      // Buscar documentos disponíveis para contexto
-      const { data: documentos } = await supabase
-        .from('documentos_juridicos')
-        .select('vector_store_id')
-        .eq('status', 'pronto')
-        .not('vector_store_id', 'is', null);
+      // Usar o assistente com tools
+      const { data, error } = await supabase.functions.invoke('assistente-juridico-tools', {
+        body: { messages: [...messages, userMessage] }
+      });
 
-      const vectorStoreIds = documentos?.map(d => d.vector_store_id).filter(Boolean) || [];
+      if (error) throw error;
 
-      // Se há documentos, usar busca com file_search
-      if (vectorStoreIds.length > 0) {
-        const { data, error } = await supabase.functions.invoke('buscar-documentos', {
-          body: { 
-            query: input,
-            vector_store_ids: vectorStoreIds,
-          }
-        });
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.choices[0].message.content
+      };
 
-        if (error) throw error;
-
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.answer
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-      } else {
-        // Senão, usar o assistente normal
-        const { data, error } = await supabase.functions.invoke('assistente-juridico', {
-          body: { messages: [...messages, userMessage] }
-        });
-
-        if (error) throw error;
-
-        const assistantMessage: Message = {
-          role: 'assistant',
-          content: data.choices[0].message.content
-        };
-
-        setMessages(prev => [...prev, assistantMessage]);
-      }
+      setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Erro ao chamar assistente:', error);
       toast({
@@ -102,7 +74,7 @@ export const AssistenteJuridico = () => {
           <h2 className="font-serif font-semibold text-lg">Assistente Jurídico com IA</h2>
         </div>
         <p className="text-sm text-muted-foreground mt-1">
-          Faça perguntas sobre jurisprudência, legislação e notícias jurídicas
+          Faça perguntas sobre prazos, publicações e processos. Posso buscar dados e calcular datas automaticamente.
         </p>
       </div>
 
@@ -111,8 +83,14 @@ export const AssistenteJuridico = () => {
           {messages.length === 0 && (
             <div className="text-center text-muted-foreground py-8">
               <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Olá! Sou seu assistente jurídico.</p>
-              <p className="text-sm mt-2">Posso buscar informações atualizadas na web para ajudá-lo.</p>
+              <p>Olá! Sou seu assistente jurídico inteligente.</p>
+              <p className="text-sm mt-2">Posso buscar prazos, publicações e calcular datas para você.</p>
+              <div className="mt-4 text-xs space-y-1">
+                <p>Experimente perguntar:</p>
+                <p className="text-accent">"Quais são os prazos do processo 0001234-56.2024.8.16.0001?"</p>
+                <p className="text-accent">"Calcule o vencimento de um prazo de 15 dias úteis a partir de 2025-01-20"</p>
+                <p className="text-accent">"Mostre as publicações recentes"</p>
+              </div>
             </div>
           )}
           
@@ -164,7 +142,7 @@ export const AssistenteJuridico = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Digite sua pergunta jurídica..."
+            placeholder="Ex: Busque os prazos do processo 0001234-56.2024.8.16.0001"
             className="resize-none"
             rows={2}
             disabled={isLoading}
