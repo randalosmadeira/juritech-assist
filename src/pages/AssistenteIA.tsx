@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { AssistenteJuridico } from "@/components/AssistenteJuridico";
+import { Header } from "@/components/Header";
 
 const AssistenteIA = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-background">
+      <Header />
       <div className="container mx-auto px-6 py-8">
         <div className="mb-6">
           <Button

@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Architecture from "./pages/Architecture";
@@ -10,6 +12,7 @@ import Feriados from "./pages/Feriados";
 import Calendario from "./pages/Calendario";
 import AssistenteIA from "./pages/AssistenteIA";
 import Documentos from "./pages/Documentos";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -20,17 +23,19 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/architecture" element={<Architecture />} />
-          <Route path="/feriados" element={<Feriados />} />
-          <Route path="/calendario" element={<Calendario />} />
-          <Route path="/assistente" element={<AssistenteIA />} />
-          <Route path="/documentos" element={<Documentos />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/architecture" element={<ProtectedRoute><Architecture /></ProtectedRoute>} />
+            <Route path="/feriados" element={<ProtectedRoute><Feriados /></ProtectedRoute>} />
+            <Route path="/calendario" element={<ProtectedRoute><Calendario /></ProtectedRoute>} />
+            <Route path="/assistente" element={<ProtectedRoute><AssistenteIA /></ProtectedRoute>} />
+            <Route path="/documentos" element={<ProtectedRoute><Documentos /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

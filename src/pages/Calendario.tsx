@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertCircle } from
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Header } from "@/components/Header";
 
 interface Feriado {
   id: string;
@@ -103,8 +104,10 @@ export default function Calendario() {
   const eventosDiaSelecionado = diaSelecionado ? eventosPorDia(diaSelecionado) : null;
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-background">
+      <Header />
+      <div className="container mx-auto py-8 space-y-6">
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold flex items-center gap-3">
             <CalendarIcon className="h-10 w-10 text-primary" />
@@ -345,6 +348,7 @@ export default function Calendario() {
             </CardTitle>
           </CardHeader>
         </Card>
+      </div>
       </div>
     </div>
   );

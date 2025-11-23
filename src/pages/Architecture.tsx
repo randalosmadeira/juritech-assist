@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Database, Server, Workflow, FileText, Calendar, Mail, MessageSquare, Shield, Clock, AlertTriangle, BarChart3 } from "lucide-react";
+import { Header } from "@/components/Header";
 
 const Architecture = () => {
   const modules = [
@@ -172,16 +173,7 @@ const Architecture = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-background">
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <h1 className="text-3xl font-serif font-bold text-primary">
-            Arquitetura do Sistema
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Visão técnica detalhada dos módulos e integrações
-          </p>
-        </div>
-      </header>
+      <Header />
 
       <main className="container mx-auto px-6 py-8">
         {/* Visão Geral */}
