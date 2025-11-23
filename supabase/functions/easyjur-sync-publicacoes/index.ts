@@ -47,10 +47,53 @@ function detectarPrazo(texto: string): { tem_prazo: boolean; dias_prazo?: number
   return { tem_prazo: false };
 }
 
-function calcularDataVencimento(dataInicio: string, diasPrazo: number): string {
-  const data = new Date(dataInicio);
-  data.setDate(data.getDate() + diasPrazo);
-  return data.toISOString().split('T')[0];
+async function calcularDataVencimento(
+  dataInicio: string, 
+  diasPrazo: number,
+  supabase: any
+): Promise<string> {
+  // Buscar todos os feriados a partir da data de início
+  const { data: feriados, error: feriadosError } = await supabase
+    .from('feriados')
+    .select('data')
+    .gte('data', dataInicio);
+
+  if (feriadosError) {
+    console.error('Erro ao buscar feriados:', feriadosError);
+    // Em caso de erro, usar cálculo simples como fallback
+    const data = new Date(dataInicio);
+    data.setDate(data.getDate() + diasPrazo);
+    return data.toISOString().split('T')[0];
+  }
+
+  // Criar Set de datas de feriados para lookup rápido
+  const feriadosSet = new Set(
+    (feriados || []).map((f: any) => f.data)
+  );
+
+  let diasContados = 0;
+  let dataAtual = new Date(dataInicio);
+
+  while (diasContados < diasPrazo) {
+    dataAtual.setDate(dataAtual.getDate() + 1);
+    
+    const diaSemana = dataAtual.getDay();
+    const dataFormatada = dataAtual.toISOString().split('T')[0];
+    
+    // Pular finais de semana (0 = domingo, 6 = sábado)
+    if (diaSemana === 0 || diaSemana === 6) {
+      continue;
+    }
+    
+    // Pular feriados
+    if (feriadosSet.has(dataFormatada)) {
+      continue;
+    }
+    
+    diasContados++;
+  }
+
+  return dataAtual.toISOString().split('T')[0];
 }
 
 serve(async (req) => {
@@ -170,7 +213,7 @@ serve(async (req) => {
 
         // Se detectou prazo, criar registro de prazo processual
         if (prazoInfo.tem_prazo && prazoInfo.dias_prazo) {
-          const dataVencimento = calcularDataVencimento(pub.data_publicacao, prazoInfo.dias_prazo);
+          const dataVencimento = await calcularDataVencimento(pub.data_publicacao, prazoInfo.dias_prazo, supabase);
           
           const { error: prazoError } = await supabase
             .from('prazos_processuais')
