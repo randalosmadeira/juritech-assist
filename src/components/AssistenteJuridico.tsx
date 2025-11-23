@@ -87,9 +87,10 @@ export const AssistenteJuridico = () => {
               <p className="text-sm mt-2">Posso buscar prazos, publicações e calcular datas para você.</p>
               <div className="mt-4 text-xs space-y-1">
                 <p>Experimente perguntar:</p>
+                <p className="text-accent">"Sincronize as publicações do EasyJur"</p>
+                <p className="text-accent">"Verifique o status da conexão com o EasyJur"</p>
                 <p className="text-accent">"Quais são os prazos do processo 0001234-56.2024.8.16.0001?"</p>
-                <p className="text-accent">"Calcule o vencimento de um prazo de 15 dias úteis a partir de 2025-01-20"</p>
-                <p className="text-accent">"Mostre as publicações recentes"</p>
+                <p className="text-accent">"Busque atualizações do EasyJur e mostre as novas publicações"</p>
               </div>
             </div>
           )}
