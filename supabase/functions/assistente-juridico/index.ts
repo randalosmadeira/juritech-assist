@@ -13,22 +13,22 @@ serve(async (req) => {
 
   try {
     const { messages } = await req.json();
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY não configurada');
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY não configurada');
     }
 
-    console.log('Chamando OpenAI com web_search...');
+    console.log('Chamando Lovable AI...');
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5',
+        model: 'google/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -45,8 +45,17 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Erro OpenAI:', errorData);
-      throw new Error(`OpenAI API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Erro AI Gateway:', errorData);
+      
+      // Handle rate limit errors
+      if (response.status === 429) {
+        throw new Error('Limite de requisições excedido. Tente novamente em alguns instantes.');
+      }
+      if (response.status === 402) {
+        throw new Error('Créditos do Lovable AI esgotados. Entre em contato com o administrador.');
+      }
+      
+      throw new Error(`AI Gateway error: ${errorData.error?.message || 'Unknown error'}`);
     }
 
     const data = await response.json();
