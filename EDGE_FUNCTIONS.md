@@ -389,12 +389,31 @@ curl -X POST \
   -d '{"ano": 2025}'
 ```
 
-### Agendamento Automático (Recomendado)
+### Agendamento Automático (✅ IMPLEMENTADO)
 
-Para importar feriados automaticamente todo ano:
+O sistema está configurado para importar feriados automaticamente todo dia 1º de janeiro às 6h da manhã.
 
+**Detalhes do Cron Job:**
+- **Nome**: `importar-feriados-anual`
+- **Agendamento**: `0 6 1 1 *` (Todo dia 1º de janeiro às 6h)
+- **Ação**: Chama a edge function `importar-feriados` passando o ano atual
+- **Extensões**: Usa `pg_cron` e `pg_net` do Supabase
+
+**Como funciona:**
+1. Todo dia 1º de janeiro às 6h, o cron job é acionado
+2. Faz uma requisição HTTP POST para a edge function
+3. Passa automaticamente o ano atual como parâmetro
+4. A função busca e importa todos os feriados nacionais do ano
+
+**Gerenciar Cron Jobs:**
 ```sql
--- Executar importação todo dia 1º de janeiro às 6h
+-- Listar todos os cron jobs
+SELECT * FROM cron.job;
+
+-- Desativar o agendamento automático
+SELECT cron.unschedule('importar-feriados-anual');
+
+-- Reativar o agendamento (se desativado)
 SELECT cron.schedule(
   'importar-feriados-anual',
   '0 6 1 1 *',
