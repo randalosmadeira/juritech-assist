@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { PDFViewer } from "@/components/PDFViewer";
+import { Header } from "@/components/Header";
 import { 
   Upload, 
   FileText, 
@@ -248,6 +249,7 @@ const Documentos = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-background">
+      <Header />
       <div className="container mx-auto px-6 py-8">
         <div className="mb-6">
           <Button

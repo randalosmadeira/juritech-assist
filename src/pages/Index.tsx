@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { Scale, Workflow, Shield, Zap, ArrowRight, Calendar, Bot, FileText } from "lucide-react";
+import { Header } from "@/components/Header";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-background">
+      <Header />
       {/* Hero Section */}
       <section className="container mx-auto px-6 pt-20 pb-16">
         <div className="max-w-4xl mx-auto text-center">

@@ -7,16 +7,16 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.importar-feriados]
-verify_jwt = false
+verify_jwt = true
 
 [functions.assistente-juridico]
-verify_jwt = false
+verify_jwt = true
 
 [functions.assistente-juridico-tools]
-verify_jwt = false
+verify_jwt = true
 
 [functions.upload-documento]
-verify_jwt = false
+verify_jwt = true
 
 [functions.buscar-documentos]
-verify_jwt = false
+verify_jwt = true

@@ -13,6 +13,15 @@ serve(async (req) => {
   }
 
   try {
+    // Check authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -23,6 +32,17 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
+    // Get user from JWT
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
     const formData = await req.formData();
     const file = formData.get('file') as File;
     const categoria = formData.get('categoria') as string;
@@ -32,7 +52,7 @@ serve(async (req) => {
       throw new Error('Nenhum arquivo enviado');
     }
 
-    console.log('Processando arquivo:', file.name);
+    console.log('Processando arquivo:', file.name, 'para usuário:', user.id);
 
     // Upload para o Supabase Storage
     const fileExt = file.name.split('.').pop();
@@ -52,7 +72,7 @@ serve(async (req) => {
       throw uploadError;
     }
 
-    // Criar registro no banco
+    // Criar registro no banco com user_id
     const { data: documento, error: dbError } = await supabase
       .from('documentos_juridicos')
       .insert({
@@ -63,6 +83,7 @@ serve(async (req) => {
         status: 'processando',
         categoria: categoria || null,
         tags: tags ? tags.split(',').map(t => t.trim()) : null,
+        user_id: user.id,
       })
       .select()
       .single();
