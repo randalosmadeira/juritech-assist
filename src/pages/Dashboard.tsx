@@ -1,28 +1,166 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Clock, AlertTriangle, TrendingUp, Calendar, Bell, CheckCircle2 } from "lucide-react";
+import { FileText, Clock, AlertTriangle, TrendingUp, Bell, CheckCircle2, Calendar as CalendarIcon } from "lucide-react";
 import { EasyJurConnectionStatus } from "@/components/EasyJurConnectionStatus";
+import { MetricsCards } from "@/components/dashboard/MetricsCards";
+import { PublicationsChart } from "@/components/dashboard/PublicationsChart";
+import { DeadlinesList } from "@/components/dashboard/DeadlinesList";
+import { CriticalAlerts } from "@/components/dashboard/CriticalAlerts";
+import { supabase } from "@/integrations/supabase/client";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  // Mock data - será substituído por dados reais do backend
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [metrics, setMetrics] = useState({
+    publicacoesHoje: 0,
+    prazosAbertos: 0,
+    auditoriasPendentes: 0,
+    processosAtivos: 0,
+  });
+  const [chartData, setChartData] = useState<{ date: string; count: number }[]>([]);
+  const [deadlines, setDeadlines] = useState<any[]>([]);
+  const [alerts, setAlerts] = useState<any[]>([]);
+  const [recentPublications, setRecentPublications] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      // Métricas principais
+      const hoje = new Date().toISOString().split('T')[0];
+      
+      // Publicações hoje
+      const { count: pubHoje } = await supabase
+        .from('publicacoes')
+        .select('*', { count: 'exact', head: true })
+        .eq('data_publicacao', hoje);
+
+      // Prazos abertos
+      const { count: prazosCount } = await supabase
+        .from('prazos_processuais')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'aberto');
+
+      // Auditorias pendentes
+      const { count: auditoriasCount } = await supabase
+        .from('auditorias')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'aberta');
+
+      // Processos ativos
+      const { count: processosCount } = await supabase
+        .from('processos')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'ativo');
+
+      setMetrics({
+        publicacoesHoje: pubHoje || 0,
+        prazosAbertos: prazosCount || 0,
+        auditoriasPendentes: auditoriasCount || 0,
+        processosAtivos: processosCount || 0,
+      });
+
+      // Publicações últimos 7 dias para gráfico
+      const seteDiasAtras = new Date();
+      seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+      
+      const { data: pubData } = await supabase
+        .from('publicacoes')
+        .select('data_publicacao')
+        .gte('data_publicacao', seteDiasAtras.toISOString().split('T')[0])
+        .order('data_publicacao', { ascending: true });
+
+      // Agrupar por data
+      const grouped = (pubData || []).reduce((acc: any, pub) => {
+        const date = new Date(pub.data_publicacao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+      }, {});
+
+      setChartData(Object.entries(grouped).map(([date, count]) => ({ date, count: count as number })));
+
+      // Prazos críticos (próximos 15 dias)
+      const { data: prazosData } = await supabase
+        .from('prazos_processuais')
+        .select('*')
+        .eq('status', 'aberto')
+        .lte('dias_restantes', 15)
+        .order('dias_restantes', { ascending: true })
+        .limit(5);
+
+      setDeadlines(prazosData || []);
+
+      // Alertas críticos
+      const { data: alertsData } = await supabase
+        .from('auditorias')
+        .select('*')
+        .eq('status', 'aberta')
+        .in('prioridade', ['urgente', 'alta'])
+        .order('data_identificacao', { ascending: false })
+        .limit(5);
+
+      setAlerts(alertsData || []);
+
+      // Publicações recentes
+      const { data: recentPubs } = await supabase
+        .from('publicacoes')
+        .select('*')
+        .order('data_publicacao', { ascending: false })
+        .limit(5);
+
+      setRecentPublications(recentPubs || []);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados do dashboard:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados do dashboard",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
-    { label: "Publicações Hoje", value: "12", icon: FileText, trend: "+3", color: "text-primary" },
-    { label: "Prazos Abertos", value: "28", icon: Clock, trend: "5 vencendo", color: "text-accent" },
-    { label: "Auditorias Pendentes", value: "3", icon: AlertTriangle, trend: "D+1", color: "text-destructive" },
-    { label: "Processos Ativos", value: "156", icon: TrendingUp, trend: "+8 este mês", color: "text-primary" },
-  ];
-
-  const recentPublications = [
-    { processo: "0001234-56.2024.8.16.0001", tribunal: "TJMA", tipo: "Intimação", data: "23/11/2025", status: "pendente" },
-    { processo: "0007890-12.2024.8.16.0001", tribunal: "TJMA", tipo: "Publicação", data: "23/11/2025", status: "lida" },
-    { processo: "0003456-78.2024.8.16.0001", tribunal: "TJMA", tipo: "Sentença", data: "22/11/2025", status: "notificada" },
-  ];
-
-  const upcomingDeadlines = [
-    { processo: "0001234-56.2024.8.16.0001", acao: "Recurso de Apelação", prazo: "25/11/2025", dias: 2 },
-    { processo: "0005678-90.2024.8.16.0001", acao: "Contrarrazões", prazo: "28/11/2025", dias: 5 },
-    { processo: "0009012-34.2024.8.16.0001", acao: "Impugnação", prazo: "30/11/2025", dias: 7 },
+    { 
+      label: "Publicações Hoje", 
+      value: metrics.publicacoesHoje, 
+      icon: FileText, 
+      trend: "Hoje", 
+      color: "text-primary",
+      loading 
+    },
+    { 
+      label: "Prazos Abertos", 
+      value: metrics.prazosAbertos, 
+      icon: Clock, 
+      trend: `${deadlines.filter(d => d.dias_restantes <= 7).length} críticos`, 
+      color: "text-accent",
+      loading 
+    },
+    { 
+      label: "Alertas Pendentes", 
+      value: metrics.auditoriasPendentes, 
+      icon: AlertTriangle, 
+      trend: `${alerts.length} críticos`, 
+      color: "text-destructive",
+      loading 
+    },
+    { 
+      label: "Processos Ativos", 
+      value: metrics.processosAtivos, 
+      icon: TrendingUp, 
+      trend: "Total ativo", 
+      color: "text-primary",
+      loading 
+    },
   ];
 
   return (
@@ -55,27 +193,14 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-6 py-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat, index) => (
-            <Card 
-              key={index} 
-              className="p-6 bg-card hover:shadow-elegant transition-all duration-300 hover:-translate-y-1 border-border"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-2">{stat.label}</p>
-                  <p className="text-3xl font-bold text-foreground mb-1">{stat.value}</p>
-                  <p className={`text-xs font-medium ${stat.color}`}>{stat.trend}</p>
-                </div>
-                <div className={`p-3 rounded-xl bg-secondary ${stat.color}`}>
-                  <stat.icon className="h-6 w-6" />
-                </div>
-              </div>
-            </Card>
-          ))}
+        <MetricsCards metrics={stats} />
+
+        {/* Gráfico de Publicações */}
+        <div className="mt-8">
+          <PublicationsChart data={chartData} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           {/* Publicações Recentes */}
           <Card className="p-6 bg-card border-border">
             <div className="flex items-center justify-between mb-6">
@@ -87,106 +212,61 @@ const Dashboard = () => {
                   Publicações Recentes
                 </h2>
               </div>
-              <Button variant="outline" size="sm">Ver Todas</Button>
             </div>
             <div className="space-y-4">
-              {recentPublications.map((pub, index) => (
-                <div 
-                  key={index} 
-                  className="p-4 rounded-lg border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-glow bg-background/50"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="font-mono text-sm font-medium text-foreground mb-1">
-                        {pub.processo}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{pub.tipo} • {pub.tribunal}</p>
-                    </div>
-                    <Badge 
-                      variant={pub.status === "lida" ? "default" : pub.status === "notificada" ? "secondary" : "outline"}
-                      className="ml-2"
-                    >
-                      {pub.status === "lida" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : 
-                       pub.status === "notificada" ? <Bell className="h-3 w-3 mr-1" /> : 
-                       <Clock className="h-3 w-3 mr-1" />}
-                      {pub.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      {pub.data}
-                    </span>
-                  </div>
+              {loading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
+                  ))}
                 </div>
-              ))}
+              ) : recentPublications.length === 0 ? (
+                <p className="text-center text-muted-foreground py-8">
+                  Nenhuma publicação recente
+                </p>
+              ) : (
+                recentPublications.map((pub) => (
+                  <div 
+                    key={pub.id} 
+                    className="p-4 rounded-lg border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-glow bg-background/50"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="font-mono text-sm font-medium text-foreground mb-1">
+                          {pub.numero_processo}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{pub.tipo_publicacao} • {pub.tribunal}</p>
+                      </div>
+                      <Badge 
+                        variant={pub.status === "lida" ? "default" : pub.status === "notificada" ? "secondary" : "outline"}
+                        className="ml-2"
+                      >
+                        {pub.status === "lida" ? <CheckCircle2 className="h-3 w-3 mr-1" /> : 
+                         pub.status === "notificada" ? <Bell className="h-3 w-3 mr-1" /> : 
+                         <Clock className="h-3 w-3 mr-1" />}
+                        {pub.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {new Date(pub.data_publicacao).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </Card>
 
           {/* Prazos Próximos */}
-          <Card className="p-6 bg-card border-border">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-accent/10">
-                  <Clock className="h-5 w-5 text-accent" />
-                </div>
-                <h2 className="text-xl font-serif font-semibold text-foreground">
-                  Prazos Próximos
-                </h2>
-              </div>
-              <Button variant="outline" size="sm">Ver Agenda</Button>
-            </div>
-            <div className="space-y-4">
-              {upcomingDeadlines.map((deadline, index) => (
-                <div 
-                  key={index} 
-                  className="p-4 rounded-lg border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-glow bg-background/50"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <p className="font-mono text-sm font-medium text-foreground mb-1">
-                        {deadline.processo}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{deadline.acao}</p>
-                    </div>
-                    <Badge 
-                      variant={deadline.dias <= 3 ? "destructive" : "outline"}
-                      className="ml-2"
-                    >
-                      {deadline.dias} dias
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      Vence: {deadline.prazo}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <DeadlinesList deadlines={deadlines} loading={loading} />
+
+          {/* Alertas Críticos */}
+          <CriticalAlerts alerts={alerts} loading={loading} />
 
           {/* Conexão EasyJur */}
           <EasyJurConnectionStatus />
-
-          {/* Outras Integrações */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Outras Integrações</CardTitle>
-              <CardDescription>Status das integrações externas</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border">
-                <span className="text-sm font-medium">ConversApp</span>
-                <Badge variant="secondary">Aguardando Config.</Badge>
-              </div>
-              <div className="flex justify-between items-center p-3 rounded-lg bg-background/50 border border-border">
-                <span className="text-sm font-medium">E-mail Corporativo</span>
-                <Badge variant="secondary">Aguardando Config.</Badge>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>
