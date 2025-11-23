@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.assistente-juridico]
 verify_jwt = false
 
+[functions.assistente-juridico-tools]
+verify_jwt = false
+
 [functions.upload-documento]
 verify_jwt = false
 
